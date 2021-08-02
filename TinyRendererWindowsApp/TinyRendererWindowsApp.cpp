@@ -3,9 +3,12 @@
 #include <gdiplus.h>
 #pragma comment (lib,"Gdiplus.lib")
 #include "SimpleGraphics.h"
+#include <iostream>
+#include "model.h"
+#include <assert.h>
 
 const int WINDOW_WIDTH = 800;
-const int WINDOW_HEIGHT = 400;
+const int WINDOW_HEIGHT = 800;
 
 using simple_graphics::SimpleColor;
 using simple_graphics::SimpleGraphics;
@@ -17,8 +20,22 @@ VOID OnPaint(HDC hdc)
     SimpleColor red(255, 0, 0, 255);
     SimpleGraphics graphics(hdc, WINDOW_WIDTH, WINDOW_HEIGHT);
     graphics.SetColor(red);
-    graphics.DrawPoint(100, 100);
-    graphics.DrawLine(Point(0, 0), Point(100, 100));
+    Model model(R"(C:/Users/mhoro/source/repos/TinyRendererWindowsApp/TinyRendererWindowsApp/african_head.obj)");
+    int width = 800;
+    int height = 800;
+    graphics.DrawLine(Point(0, 200), Point(400, 200));
+    assert(model.nfaces() > 0);
+    for (int i = 0; i < model.nfaces(); i++) {
+        std::vector<int> face = model.face(i);
+        for (int j = 0; j < 3; j++) {
+            Vec3f v0 = model.vert(face[j]);
+            Vec3f v1 = model.vert(face[(j + 1) % 3]);
+            Point a((v0.x + 1.) * width / 2., (v0.y + 1.) * height / 2.);
+            Point b((v1.x + 1.) * width / 2., (v1.y + 1.) * height / 2.);
+            graphics.DrawLine(a, b);
+        }
+    }
+    graphics.Render();
 }
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
@@ -53,8 +70,8 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, INT iCmdShow)
         WS_OVERLAPPEDWINDOW,      // window style
         CW_USEDEFAULT,            // initial x position
         CW_USEDEFAULT,            // initial y position
-        WINDOW_WIDTH,            // initial x size
-        WINDOW_HEIGHT,            // initial y size
+        WINDOW_WIDTH + 20,            // initial x size
+        WINDOW_HEIGHT + 50,            // initial y size
         NULL,                     // parent window handle
         NULL,                     // window menu handle
         hInstance,                // program instance handle

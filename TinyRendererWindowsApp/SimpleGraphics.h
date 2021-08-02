@@ -28,16 +28,16 @@ namespace simple_graphics {
 			window_width_ = window_width;
 			window_height_ = window_height;
 			gf_.reset(new Gdiplus::Graphics(hdc));
-			brush_.reset(new Gdiplus::SolidBrush(Gdiplus::Color(0, 0, 0)));
+			bmp_.reset(new Gdiplus::Bitmap(window_width, window_height, PixelFormat32bppARGB));
 			FlushWindow();
 		}
 
 		void SetColor(const SimpleColor& color) {
-			brush_->SetColor(Gdiplus::Color(color.a, color.r, color.g, color.b));
+			color_ = Gdiplus::Color(color.a, color.r, color.g, color.b);
 		}
 
 		void DrawPoint(int x, int y) {
-			gf_->FillRectangle(brush_.get(), Gdiplus::Rect(x, window_height_ - 1 - y, 1, 1));
+			bmp_->SetPixel(x, window_height_ - 1 - y, color_);
 		}
 
 		void DrawPoint(int x, int y, const SimpleColor& color) {
@@ -45,17 +45,39 @@ namespace simple_graphics {
 			DrawPoint(x, y);
 		}
 		void FlushWindow() {
-			brush_->SetColor(Gdiplus::Color(0, 0, 0));
-			gf_->FillRectangle(brush_.get(), Gdiplus::Rect(0, 0, window_width_, window_height_));
+			Gdiplus::BitmapData data;
+			Gdiplus::Rect rect(0, 0, window_width_, window_height_);
+			bmp_->LockBits(&rect, Gdiplus::ImageLockModeWrite,
+				PixelFormat32bppARGB, &data);
+			memset(data.Scan0, 0, data.Height * data.Stride);
+			uint8_t* alpha_ptr = (uint8_t*)(data.Scan0) + 3;
+			for (int y = 0; y < data.Height; ++y) {
+				uint8_t* alpha_row_ptr = alpha_ptr;
+				for (int x = 0; x < data.Width; ++x) {
+					*alpha_row_ptr = 255;
+					alpha_row_ptr += 4;
+				}
+				alpha_ptr += data.Stride;
+			}
+			bmp_->UnlockBits(&data);
 		}
 
-		void DrawLine(const Point& a, const Point& b);
+		void Render() {
+			Gdiplus::Rect sizeR(0, 0, bmp_->GetWidth(), bmp_->GetHeight());
+			gf_->DrawImage(bmp_.get(), sizeR, 0, 0,
+				(int)bmp_->GetWidth(),
+				(int)bmp_->GetHeight(),
+				Gdiplus::UnitPixel);
+		}
+
+		void DrawLine(Point a, Point b);
 
 	private:
 		int window_width_;
 		int window_height_;
+		Gdiplus::Color color_;
 		std::unique_ptr<Gdiplus::Graphics> gf_;
-		std::unique_ptr<Gdiplus::SolidBrush> brush_;
+		std::unique_ptr<Gdiplus::Bitmap> bmp_;
 	};
 
 }

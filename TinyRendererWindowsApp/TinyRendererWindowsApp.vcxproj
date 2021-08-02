@@ -93,6 +93,9 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy /y $(ProjectDir)african_head.obj  $(OutDir)</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -121,6 +124,9 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy /y $(ProjectDir)african_head.obj  $(OutDir)</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -140,12 +146,15 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="framework.h" />
+    <ClInclude Include="geometry.h" />
+    <ClInclude Include="model.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="SimpleGraphics.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="TinyRendererWindowsApp.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="model.cpp" />
     <ClCompile Include="SimpleGraphics.cpp" />
     <ClCompile Include="TinyRendererWindowsApp.cpp" />
   </ItemGroup>
@@ -155,6 +164,15 @@
   <ItemGroup>
     <Image Include="small.ico" />
     <Image Include="TinyRendererWindowsApp.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="african_head.obj">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</DeploymentContent>
+      <FileType>Document</FileType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
+    </Text>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
