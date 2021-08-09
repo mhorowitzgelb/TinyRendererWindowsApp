@@ -19,13 +19,31 @@ Model::Model(const char *filename) : verts_(), faces_() {
             Vec3f v;
             for (int i=0;i<3;i++) iss >> v.raw[i];
             verts_.push_back(v);
-        } else if (!line.compare(0, 2, "f ")) {
-            std::vector<int> f;
-            int itrash, idx;
+        } 
+        else if (!line.compare(0, 3, "vt ")) {
             iss >> trash;
-            while (iss >> idx >> trash >> itrash >> trash >> itrash) {
-                idx--; // in wavefront obj all indices start at 1, not zero
-                f.push_back(idx);
+            iss >> trash;
+            Vec2f texture_pt;
+            for (int i = 0; i < 2; ++i) iss >> texture_pt.raw[i];
+            texture_points_.push_back(texture_pt);
+        }
+        else if (!line.compare(0, 3, "vn ")) {
+            iss >> trash;
+            iss >> trash;
+            Vec3f v;
+            for (int i = 0; i < 3; i++) iss >> v.raw[i];
+            vert_normals_.push_back(v);
+        }
+        else if (!line.compare(0, 2, "f ")) {
+            std::vector<FaceIndexes> f;
+            int texture_idx, vert_idx, normal_idx;
+            iss >> trash;
+            while (iss >> vert_idx >> trash >> texture_idx >> trash >> normal_idx) {
+                FaceIndexes face;
+                face.texture_idx = texture_idx - 1;
+                face.vert_idx = vert_idx - 1;
+                face.vert_normal_idx = normal_idx - 1;
+                f.push_back(face);
             }
             faces_.push_back(f);
         }
@@ -44,7 +62,7 @@ int Model::nfaces() {
     return (int)faces_.size();
 }
 
-std::vector<int> Model::face(int idx) {
+std::vector<FaceIndexes> Model::face(int idx) {
     return faces_[idx];
 }
 

@@ -4,6 +4,10 @@
 #include <objidl.h>
 #include <gdiplus.h>
 #pragma comment (lib,"Gdiplus.lib")
+#include "geometry.h"
+#include <vector>
+#include "tgaimage.h"
+#include <limits>
 
 namespace simple_graphics {
 	struct Point {
@@ -14,6 +18,7 @@ namespace simple_graphics {
 
 	struct SimpleColor {
 		SimpleColor(UINT8 r, UINT8 g, UINT8 b, UINT8 a) : r(r), g(g), b(b), a(a) {}
+		SimpleColor(const TGAColor& color) : r(color.bgra[2]), g(color.bgra[1]), b(color.bgra[0]), a(255){}
 		UINT8 r;
 		UINT8 g;
 		UINT8 b;
@@ -29,6 +34,10 @@ namespace simple_graphics {
 			window_height_ = window_height;
 			gf_.reset(new Gdiplus::Graphics(hdc));
 			bmp_.reset(new Gdiplus::Bitmap(window_width, window_height, PixelFormat32bppARGB));
+			z_buffer_.resize(window_height * window_width);
+			for (int i = 0; i < z_buffer_.size(); ++i) {
+				z_buffer_[i] = std::numeric_limits<float>::lowest();
+			}
 			FlushWindow();
 		}
 
@@ -44,17 +53,27 @@ namespace simple_graphics {
 			SetColor(color);
 			DrawPoint(x, y);
 		}
+
+		float DirectionalComponent(const Vec3f triangle[3], const Vec3f& direction);
+
+		void DrawTriangleOutline(Vec2i a, Vec2i b, Vec2i c);
+
+		void DrawTriangle(const Vec3f triangle[3], const Vec3f normals[3], const Vec2f textures[3], const TGAImage& image, const Vec3f& light_direction);
+
 		void FlushWindow() {
 			Gdiplus::BitmapData data;
 			Gdiplus::Rect rect(0, 0, window_width_, window_height_);
 			bmp_->LockBits(&rect, Gdiplus::ImageLockModeWrite,
 				PixelFormat32bppARGB, &data);
 			memset(data.Scan0, 0, data.Height * data.Stride);
-			uint8_t* alpha_ptr = (uint8_t*)(data.Scan0) + 3;
+			uint8_t* alpha_ptr = (uint8_t*)(data.Scan0);
 			for (int y = 0; y < data.Height; ++y) {
 				uint8_t* alpha_row_ptr = alpha_ptr;
 				for (int x = 0; x < data.Width; ++x) {
-					*alpha_row_ptr = 255;
+					alpha_row_ptr[0] = 125;
+					alpha_row_ptr[1] = 125;
+					alpha_row_ptr[2] = 125;
+					alpha_row_ptr[3] = 255;
 					alpha_row_ptr += 4;
 				}
 				alpha_ptr += data.Stride;
@@ -62,15 +81,19 @@ namespace simple_graphics {
 			bmp_->UnlockBits(&data);
 		}
 
-		void Render() {
-			Gdiplus::Rect sizeR(0, 0, bmp_->GetWidth(), bmp_->GetHeight());
+		void Render(int scale = 1) {
+			int new_width = scale * bmp_->GetWidth();
+			int new_height = scale * bmp_->GetHeight();
+			Gdiplus::Rect sizeR(0, 0, new_width, new_height);
+			gf_->SetInterpolationMode(Gdiplus::InterpolationModeNearestNeighbor);
+			gf_->ScaleTransform(scale, scale);
 			gf_->DrawImage(bmp_.get(), sizeR, 0, 0,
 				(int)bmp_->GetWidth(),
 				(int)bmp_->GetHeight(),
 				Gdiplus::UnitPixel);
 		}
 
-		void DrawLine(Point a, Point b);
+		void DrawLine(Vec2i a, Vec2i b);
 
 	private:
 		int window_width_;
@@ -78,6 +101,7 @@ namespace simple_graphics {
 		Gdiplus::Color color_;
 		std::unique_ptr<Gdiplus::Graphics> gf_;
 		std::unique_ptr<Gdiplus::Bitmap> bmp_;
+		std::vector<float> z_buffer_;
 	};
 
 }

@@ -39,6 +39,9 @@
     <ClInclude Include="model.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="tgaimage.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="TinyRendererWindowsApp.cpp">
@@ -48,6 +51,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="model.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="tgaimage.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="geometry.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

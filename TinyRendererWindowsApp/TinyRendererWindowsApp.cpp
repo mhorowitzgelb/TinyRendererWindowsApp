@@ -6,35 +6,69 @@
 #include <iostream>
 #include "model.h"
 #include <assert.h>
+#include "tgaimage.h"
+#include "geometry.h"
 
-const int WINDOW_WIDTH = 800;
-const int WINDOW_HEIGHT = 800;
-
+const int WINDOW_WIDTH = 1000;
+const int WINDOW_HEIGHT = 1000;
 using simple_graphics::SimpleColor;
 using simple_graphics::SimpleGraphics;
-using simple_graphics::Point;
 
 
 VOID OnPaint(HDC hdc)
 {
     SimpleColor red(255, 0, 0, 255);
+    SimpleColor blue(0, 0, 255, 255);
+    SimpleColor green(0, 255, 0, 255);
     SimpleGraphics graphics(hdc, WINDOW_WIDTH, WINDOW_HEIGHT);
+   
     graphics.SetColor(red);
     Model model(R"(C:/Users/mhoro/source/repos/TinyRendererWindowsApp/TinyRendererWindowsApp/african_head.obj)");
-    int width = 800;
-    int height = 800;
-    graphics.DrawLine(Point(0, 200), Point(400, 200));
-    assert(model.nfaces() > 0);
+    Vec3f direction(0, 0, -1);
+    Vec3f light_direction(1, 0, -1.1);
+    light_direction.normalize();
+    TGAImage tga_img;
+    tga_img.read_tga_file("C:/Users/mhoro/Downloads/african_head_diffuse.tga");
+    tga_img.flip_vertically();
+    float image_plane_dist = 10000;
+    Matrix projection = Matrix::identity(4);
+    projection[3][2] = -1.0f / image_plane_dist;
+
+
+
     for (int i = 0; i < model.nfaces(); i++) {
-        std::vector<int> face = model.face(i);
+        std::vector<FaceIndexes> face = model.face(i);
+        Vec3f screen_coords[3];
+        Vec3f world_coords[3];
+        Vec3f normals[3];
+        Vec2f textures[3];
         for (int j = 0; j < 3; j++) {
-            Vec3f v0 = model.vert(face[j]);
-            Vec3f v1 = model.vert(face[(j + 1) % 3]);
-            Point a((v0.x + 1.) * width / 2., (v0.y + 1.) * height / 2.);
-            Point b((v1.x + 1.) * width / 2., (v1.y + 1.) * height / 2.);
-            graphics.DrawLine(a, b);
+            const FaceIndexes& indexes = face[j];
+            world_coords[j] = model.vert(indexes.vert_idx);
+            world_coords[j].z -= 0.3;
+            
+            Matrix reprojected = projection * world_coords[j].AsHomogenous();
+
+            normals[j] = model.vert_normal(indexes.vert_normal_idx);
+            textures[j] = model.texture(indexes.texture_idx);
+            screen_coords[j] = Vec3f((reprojected[0][0] / reprojected[3][0] + 1.) * WINDOW_WIDTH / 2., (reprojected[1][0] / reprojected[3][0] + 1.)  *WINDOW_HEIGHT / 2., world_coords[j].z);
         }
+        float component = graphics.DirectionalComponent(world_coords, direction);
+        if (component < 0) {
+            continue;
+        }
+        graphics.DrawTriangle(screen_coords,normals,textures,tga_img,light_direction);
     }
+    /*
+    
+    tga_img.flip_vertically();
+    for (int y = 0; y < WINDOW_HEIGHT; ++y) {
+        for (int x = 0; x < WINDOW_WIDTH; ++x) {
+            TGAColor color = tga_img.get(x, y);
+            graphics.SetColor(SimpleColor(color.bgra[2], color.bgra[1], color.bgra[0], 255));
+            graphics.DrawPoint(x, y);
+        }
+    }*/
     graphics.Render();
 }
 
