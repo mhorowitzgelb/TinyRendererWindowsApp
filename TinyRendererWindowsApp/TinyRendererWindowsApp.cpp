@@ -13,6 +13,9 @@ const int WINDOW_WIDTH = 1000;
 const int WINDOW_HEIGHT = 1000;
 using simple_graphics::SimpleColor;
 using simple_graphics::SimpleGraphics;
+using simple_graphics::ModelView;
+using simple_graphics::Projection;
+using simple_graphics::Viewport;
 
 
 VOID OnPaint(HDC hdc)
@@ -25,15 +28,28 @@ VOID OnPaint(HDC hdc)
     graphics.SetColor(red);
     Model model(R"(C:/Users/mhoro/source/repos/TinyRendererWindowsApp/TinyRendererWindowsApp/african_head.obj)");
     Vec3f direction(0, 0, -1);
-    Vec3f light_direction(1, 0, -1.1);
+    Vec3f light_direction(0, 0, -1);
     light_direction.normalize();
     TGAImage tga_img;
     tga_img.read_tga_file("C:/Users/mhoro/Downloads/african_head_diffuse.tga");
     tga_img.flip_vertically();
-    float image_plane_dist = 10000;
-    Matrix projection = Matrix::identity(4);
-    projection[3][2] = -1.0f / image_plane_dist;
+    float image_plane_dist = 1000;
 
+    Vec3f eye(0, 0, 100);
+    Vec3f center(0.00, 0.000, 0);
+    Vec3f up(0.000, 1, 0.00);
+
+    simple_graphics::lookat(eye, center, up);
+    simple_graphics::projection(-1.f / (eye - center).norm());
+    simple_graphics::viewport(0 , 0 , WINDOW_WIDTH, WINDOW_HEIGHT);
+    
+    Matrix m = Viewport * Projection * ModelView;
+    Matrix m_inverse_transpose = ModelView.transpose().inverse();
+
+    Matrix light_direction_matrix = ModelView * light_direction.AsHomogenous();
+    light_direction.x = light_direction_matrix[0][0];
+    light_direction.y = light_direction_matrix[1][0];
+    light_direction.z = light_direction_matrix[2][0];
 
 
     for (int i = 0; i < model.nfaces(); i++) {
@@ -45,15 +61,18 @@ VOID OnPaint(HDC hdc)
         for (int j = 0; j < 3; j++) {
             const FaceIndexes& indexes = face[j];
             world_coords[j] = model.vert(indexes.vert_idx);
-            world_coords[j].z -= 0.3;
             
-            Matrix reprojected = projection * world_coords[j].AsHomogenous();
+            Matrix reprojected = m * world_coords[j].AsHomogenous();
+            Matrix unrprojected_normal = model.vert_normal(indexes.vert_normal_idx).AsHomogenous();
+            unrprojected_normal[3][0] = 0;
+            Matrix reproject_normal = m_inverse_transpose * unrprojected_normal;
 
-            normals[j] = model.vert_normal(indexes.vert_normal_idx);
+            normals[j] = Vec3f(reproject_normal[0][0], reproject_normal[1][0], reproject_normal[2][0]);
             textures[j] = model.texture(indexes.texture_idx);
-            screen_coords[j] = Vec3f((reprojected[0][0] / reprojected[3][0] + 1.) * WINDOW_WIDTH / 2., (reprojected[1][0] / reprojected[3][0] + 1.)  *WINDOW_HEIGHT / 2., world_coords[j].z);
+            screen_coords[j] = Vec3f(reprojected[0][0] / reprojected[3][0], reprojected[1][0] / reprojected[3][0], reprojected[2][0] / reprojected[3][0]);
         }
-        float component = graphics.DirectionalComponent(world_coords, direction);
+        
+        float component = graphics.DirectionalComponent(screen_coords, direction);
         if (component < 0) {
             continue;
         }

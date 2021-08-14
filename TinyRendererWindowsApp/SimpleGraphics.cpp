@@ -4,6 +4,10 @@
 
 namespace simple_graphics {
 	namespace {
+
+		
+
+
 		template<typename t>
 		Vec3f barycentric(const Vec2<t>& p, const Vec3<t> triangle[3]) {
 			Vec2<t> a_b = triangle[1].AsVec2() - triangle[0].AsVec2();
@@ -56,9 +60,42 @@ namespace simple_graphics {
 
 		float GetBrightnessForPoint(const Vec3f& bary, const Vec3f normals[3], const Vec3f& light_direction) {
 			Vec3f normal = normals[0] * bary[0] + normals[1] * bary[1] + normals[2] * bary[2];
-			return min(1,max(0,normal.normalize() * light_direction * -1));
+			return min(1,max(0,normal.normalize() * light_direction * -1 ));
 		}
 
+	}
+
+	Matrix ModelView;
+	Matrix Viewport;
+	Matrix Projection;
+
+	void viewport(int x, int y, int w, int h) {
+		Viewport = Matrix::identity(4);
+		Viewport[0][3] = x + w / 2.f;
+		Viewport[1][3] = y + h / 2.f;
+		Viewport[2][3] = 0;
+
+		Viewport[0][0] = w / 2.f;
+		Viewport[1][1] = h / 2.f;
+		Viewport[2][2] = 1;
+	}
+
+	void projection(float coeff) {
+		Projection = Matrix::identity(4);
+		Projection[3][2] = coeff;
+	}
+	
+	void lookat(Vec3f eye, Vec3f center, Vec3f up) {
+		Vec3f z = (eye - center).normalize();
+		Vec3f x = (up ^ z).normalize();
+		Vec3f y = (z ^ x).normalize();
+		ModelView = Matrix::identity(4);
+		for (int i = 0; i < 3; i++) {
+			ModelView[0][i] = x[i];
+			ModelView[1][i] = y[i];
+			ModelView[2][i] = z[i];
+			ModelView[i][3] = -center[i];
+		}
 	}
 
 
