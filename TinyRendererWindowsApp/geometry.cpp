@@ -122,3 +122,11 @@ Vec3f::Vec3(const Matrix& matrix) {
         std::exit(EXIT_FAILURE);
     }
 }
+
+template<>
+Vec3f::Vec3(const TGAColor& color) {
+    x = color.bgra[0];
+    y = color.bgra[1];
+    z = color.bgra[2];
+    normalize();
+}

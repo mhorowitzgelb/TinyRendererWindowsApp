@@ -9,6 +9,7 @@
 #include "tgaimage.h"
 #include "geometry.h"
 #include "gaurad_shader.h"
+#include "normal_map_shader.h"
 
 const int WINDOW_WIDTH = 1000;
 const int WINDOW_HEIGHT = 1000;
@@ -18,6 +19,7 @@ using simple_graphics::ModelView;
 using simple_graphics::Projection;
 using simple_graphics::Viewport;
 using simple_graphics::GauraudShader;
+using simple_graphics::NormalMapShader;
 
 constexpr float PI = 3.14159265359;
 
@@ -35,6 +37,9 @@ public:
 
 VOID OnPaint(HDC hdc, long time)
 {
+    Vec3f normal_vec(0, 0, 1);
+    Vec3f light_direction_(0, 0, 1);
+    Vec3f reflection = (normal_vec * (normal_vec * light_direction_ * 2.f) - light_direction_).normalize();
     SimpleColor red(255, 0, 0, 255);
     SimpleColor blue(0, 0, 255, 255);
     SimpleColor green(0, 255, 0, 255);
@@ -42,14 +47,23 @@ VOID OnPaint(HDC hdc, long time)
    
     graphics.SetColor(red);
     Model model(R"(C:/Users/mhoro/source/repos/TinyRendererWindowsApp/TinyRendererWindowsApp/african_head.obj)");
-    Vec3f light_direction(0, 0, 1);
-    light_direction.normalize();
+    
     TGAImage tga_img;
     tga_img.read_tga_file("C:/Users/mhoro/Downloads/african_head_diffuse.tga");
     tga_img.flip_vertically();
+
+    TGAImage normal_map;
+    normal_map.read_tga_file("C:/Users/mhoro/Downloads/african_head_nm.tga");
+    normal_map.flip_vertically();
+
+    TGAImage spec_map;
+    spec_map.read_tga_file("C:/Users/mhoro/Downloads/african_head_spec.tga");
+    spec_map.flip_vertically();
     float image_plane_dist = 1000;
-    float radian = 2 * PI * (time % 2000) / 2000;
-    Vec3f eye(std::cos(radian) * 100, 0.1, std::sin(radian) * 100);
+    float radian = PI /2 + 4 * PI * time / 2000;
+    Vec3f light_direction(std::sin(radian), 1, std::cos(radian));
+    light_direction.normalize();
+    Vec3f eye(70,0,100);
     Vec3f center(0.00, 0.000, 0);
     Vec3f up(0.000, 1, 0.00);
 
@@ -60,7 +74,8 @@ VOID OnPaint(HDC hdc, long time)
     Matrix m = Viewport * Projection * ModelView;
     //Matrix m_inverse_transpose = ModelView.transpose().inverse();
 
-    GauraudShader shader(&model, &tga_img, light_direction);
+    NormalMapShader shader(&model, &tga_img,&normal_map,&spec_map, light_direction);
+    //GauraudShader shader(&model, &tga_img, light_direction);
     const Vec3f forward(0, 0, -1);
     for (int i = 0; i < model.nfaces(); i++) {
         Vec3f triangle[3];
