@@ -148,8 +148,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="framework.h" />
+    <ClInclude Include="gaurad_shader.h" />
     <ClInclude Include="geometry.h" />
     <ClInclude Include="model.h" />
+    <ClInclude Include="normal_map_shader.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="SimpleGraphics.h" />
     <ClInclude Include="targetver.h" />
@@ -157,8 +159,10 @@
     <ClInclude Include="TinyRendererWindowsApp.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="gaurad_shader.cpp" />
     <ClCompile Include="geometry.cpp" />
     <ClCompile Include="model.cpp" />
+    <ClCompile Include="normal_map_shader.cpp" />
     <ClCompile Include="SimpleGraphics.cpp" />
     <ClCompile Include="tgaimage.cpp" />
     <ClCompile Include="TinyRendererWindowsApp.cpp" />

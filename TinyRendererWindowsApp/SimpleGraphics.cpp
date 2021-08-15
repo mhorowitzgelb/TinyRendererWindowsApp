@@ -113,7 +113,7 @@ namespace simple_graphics {
 		DrawLine(c, a);
 	}
 	
-	void SimpleGraphics::DrawTriangle(const Vec3f triangle[3], const Vec3f normals[3], const Vec2f textures[3], const TGAImage& image, const Vec3f& light_direction)
+	void SimpleGraphics::DrawTriangle(const Vec3f triangle[3], IShader& shader)
 	{
 		std::pair<int, int> bounds_x = Bounds(triangle[0].x, triangle[1].x, triangle[2].x, window_width_);
 		std::pair<int, int> bounds_y = Bounds(triangle[0].y, triangle[1].y, triangle[2].y, window_height_);
@@ -123,22 +123,19 @@ namespace simple_graphics {
 		bounds_y.second = min(window_width_ - 1, bounds_y.second);
 
 		Vec2i point;
+		SimpleColor color(0,0,0,0);
 		for (point.y = bounds_y.first; point.y <= bounds_y.second; ++point.y) {
 			for (point.x = bounds_x.first; point.x <= bounds_x.second; ++point.x) {
 				Vec3f bary = barycentric(Vec2f(point.x, point.y), triangle);
 				
 				if (InTriangle(bary)) {
-					float z = GetZForPoint(bary,triangle);
-					if (z > z_buffer_[point.y * window_width_ + point.x]) {
-						float brightness = GetBrightnessForPoint(bary, normals, light_direction);
-
-						SimpleColor color = GetColorForPoint(bary, textures, image);
-						color.r *= brightness;
-						color.g *= brightness;
-						color.b *= brightness;
-						SetColor(color);
-						z_buffer_[point.y * window_width_ + point.x] = z;
-						DrawPoint(point.x, point.y);
+					if (!shader.fragment(bary, color)) {
+						float z = GetZForPoint(bary, triangle);
+						if (z > z_buffer_[point.y * window_width_ + point.x]) {
+							SetColor(color);
+							z_buffer_[point.y * window_width_ + point.x] = z;
+							DrawPoint(point.x, point.y);
+						}
 					}
 				}
 			}

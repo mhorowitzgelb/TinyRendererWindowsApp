@@ -8,6 +8,7 @@
 #include <assert.h>
 #include "tgaimage.h"
 #include "geometry.h"
+#include "gaurad_shader.h"
 
 const int WINDOW_WIDTH = 1000;
 const int WINDOW_HEIGHT = 1000;
@@ -16,9 +17,23 @@ using simple_graphics::SimpleGraphics;
 using simple_graphics::ModelView;
 using simple_graphics::Projection;
 using simple_graphics::Viewport;
+using simple_graphics::GauraudShader;
+
+constexpr float PI = 3.14159265359;
 
 
-VOID OnPaint(HDC hdc)
+class CellShader : public GauraudShader {
+public:
+    CellShader(Model* model, TGAImage* texture, const Vec3f& light_direction) : GauraudShader(model, texture, light_direction) {}
+    virtual bool fragment(Vec3f bar, SimpleColor& color) override {
+        float intensity = varying_intensity_ * bar;
+        intensity = std::round(intensity * 6) / 6;
+        color = SimpleColor(255 * intensity, 255 * intensity, 255 * intensity, 255);
+        return false;
+    }
+};
+
+VOID OnPaint(HDC hdc, long time)
 {
     SimpleColor red(255, 0, 0, 255);
     SimpleColor blue(0, 0, 255, 255);
@@ -27,15 +42,14 @@ VOID OnPaint(HDC hdc)
    
     graphics.SetColor(red);
     Model model(R"(C:/Users/mhoro/source/repos/TinyRendererWindowsApp/TinyRendererWindowsApp/african_head.obj)");
-    Vec3f direction(0, 0, -1);
-    Vec3f light_direction(0, 0, -1);
+    Vec3f light_direction(0, 0, 1);
     light_direction.normalize();
     TGAImage tga_img;
     tga_img.read_tga_file("C:/Users/mhoro/Downloads/african_head_diffuse.tga");
     tga_img.flip_vertically();
     float image_plane_dist = 1000;
-
-    Vec3f eye(0, 0, 100);
+    float radian = 2 * PI * (time % 2000) / 2000;
+    Vec3f eye(std::cos(radian) * 100, 0.1, std::sin(radian) * 100);
     Vec3f center(0.00, 0.000, 0);
     Vec3f up(0.000, 1, 0.00);
 
@@ -44,39 +58,19 @@ VOID OnPaint(HDC hdc)
     simple_graphics::viewport(0 , 0 , WINDOW_WIDTH, WINDOW_HEIGHT);
     
     Matrix m = Viewport * Projection * ModelView;
-    Matrix m_inverse_transpose = ModelView.transpose().inverse();
+    //Matrix m_inverse_transpose = ModelView.transpose().inverse();
 
-    Matrix light_direction_matrix = ModelView * light_direction.AsHomogenous();
-    light_direction.x = light_direction_matrix[0][0];
-    light_direction.y = light_direction_matrix[1][0];
-    light_direction.z = light_direction_matrix[2][0];
-
-
+    GauraudShader shader(&model, &tga_img, light_direction);
+    const Vec3f forward(0, 0, -1);
     for (int i = 0; i < model.nfaces(); i++) {
-        std::vector<FaceIndexes> face = model.face(i);
-        Vec3f screen_coords[3];
-        Vec3f world_coords[3];
-        Vec3f normals[3];
-        Vec2f textures[3];
+        Vec3f triangle[3];
         for (int j = 0; j < 3; j++) {
-            const FaceIndexes& indexes = face[j];
-            world_coords[j] = model.vert(indexes.vert_idx);
-            
-            Matrix reprojected = m * world_coords[j].AsHomogenous();
-            Matrix unrprojected_normal = model.vert_normal(indexes.vert_normal_idx).AsHomogenous();
-            unrprojected_normal[3][0] = 0;
-            Matrix reproject_normal = m_inverse_transpose * unrprojected_normal;
-
-            normals[j] = Vec3f(reproject_normal[0][0], reproject_normal[1][0], reproject_normal[2][0]);
-            textures[j] = model.texture(indexes.texture_idx);
-            screen_coords[j] = Vec3f(reprojected[0][0] / reprojected[3][0], reprojected[1][0] / reprojected[3][0], reprojected[2][0] / reprojected[3][0]);
+            triangle[j] = shader.vertex(i,j);
         }
-        
-        float component = graphics.DirectionalComponent(screen_coords, direction);
-        if (component < 0) {
+        if (graphics.DirectionalComponent(triangle, forward) < 0) {
             continue;
         }
-        graphics.DrawTriangle(screen_coords,normals,textures,tga_img,light_direction);
+        graphics.DrawTriangle(triangle, shader);
     }
     /*
     
@@ -132,7 +126,6 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, INT iCmdShow)
 
     ShowWindow(hWnd, iCmdShow);
     UpdateWindow(hWnd);
-
     while (GetMessage(&msg, NULL, 0, 0))
     {
         TranslateMessage(&msg);
@@ -143,18 +136,51 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, INT iCmdShow)
     return msg.wParam;
 }  // WinMain
 
+RECT rcCurrent = { 0,0,0,0 };
+POINT aptStar[6] = { 10,1, 1,19, 19,6, 1,6, 19,19, 10,1 };
+int X = 2, Y = -1, idTimer = -1;
+BOOL fVisible = FALSE;
+HDC hdc;
+long passed_time = 0;
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
     WPARAM wParam, LPARAM lParam)
 {
-    HDC          hdc;
+   
     PAINTSTRUCT  ps;
+    
+    RECT rc;
 
     switch (message)
     {
+    case WM_CREATE:
+        // Calculate the starting point.  
+
+        GetClientRect(hWnd, &rc);
+        //OffsetRect(&rcCurrent, rc.right / 2, rc.bottom / 2);
+
+        // Initialize the private DC.  
+
+        hdc = GetDC(hWnd);
+        SetViewportOrgEx(hdc, rcCurrent.left,
+            rcCurrent.top, NULL);
+        SetROP2(hdc, R2_NOT);
+
+        // Start the timer.  
+
+        SetTimer(hWnd, idTimer = 1, 1, NULL);
+        return 0;
+    case WM_TIMER:
+        passed_time += 10;
+        GetClientRect(hWnd, &rc);
+        SetViewportOrgEx(hdc, rcCurrent.left,
+            rcCurrent.top, NULL);
+        OnPaint(hdc, passed_time);
+        return 0;
     case WM_PAINT:
-        hdc = BeginPaint(hWnd, &ps);
-        OnPaint(hdc);
-        EndPaint(hWnd, &ps);
+            BeginPaint(hWnd, &ps);
+            
+            EndPaint(hWnd, &ps);
         return 0;
     case WM_DESTROY:
         PostQuitMessage(0);

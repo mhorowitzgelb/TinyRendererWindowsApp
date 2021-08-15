@@ -6,11 +6,11 @@
 
 Matrix::Matrix(int r, int c) : m(std::vector<std::vector<float> >(r, std::vector<float>(c, 0.f))), rows(r), cols(c) { }
 
-int Matrix::nrows() {
+int Matrix::nrows() const{
     return rows;
 }
 
-int Matrix::ncols() {
+int Matrix::ncols() const {
     return cols;
 }
 
@@ -101,4 +101,24 @@ std::ostream& operator<<(std::ostream& s, Matrix& m) {
         s << "\n";
     }
     return s;
+}
+
+template<>
+Vec3f::Vec3(const Matrix& matrix) {
+    if (matrix.ncols() != 1) {
+        std::exit(EXIT_FAILURE);
+    }
+    if (matrix.nrows() == 3) {
+        x = matrix[0][0];
+        y = matrix[1][0];
+        z = matrix[2][0];
+    }
+    else if (matrix.nrows() == 4) {
+        x = matrix[0][0] / matrix[3][0];
+        y = matrix[1][0] / matrix[3][0];
+        z = matrix[2][0] / matrix[3][0];
+    }
+    else {
+        std::exit(EXIT_FAILURE);
+    }
 }

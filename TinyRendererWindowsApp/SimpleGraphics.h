@@ -21,7 +21,6 @@ namespace simple_graphics {
 	void projection(float coeff = 0.f); // coeff = -1/c
 	void lookat(Vec3f eye, Vec3f center, Vec3f up);
 
-
 	struct Point {
 		Point(int x, int y) : x(x), y(y) {}
 		int x;
@@ -35,6 +34,13 @@ namespace simple_graphics {
 		UINT8 g;
 		UINT8 b;
 		UINT8 a;
+	};
+
+	class IShader {
+	public:
+		virtual ~IShader() = default;
+		virtual Vec3f vertex(int iface, int nthvert) = 0;
+		virtual bool fragment(Vec3f bar, SimpleColor& color) = 0;
 	};
 
 	class SimpleGraphics {
@@ -70,7 +76,7 @@ namespace simple_graphics {
 
 		void DrawTriangleOutline(Vec2i a, Vec2i b, Vec2i c);
 
-		void DrawTriangle(const Vec3f triangle[3], const Vec3f normals[3], const Vec2f textures[3], const TGAImage& image, const Vec3f& light_direction);
+		void DrawTriangle(const Vec3f triangle[3], IShader& shader);
 
 		void FlushWindow() {
 			Gdiplus::BitmapData data;
