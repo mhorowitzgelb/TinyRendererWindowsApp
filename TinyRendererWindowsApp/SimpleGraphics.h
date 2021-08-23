@@ -8,18 +8,36 @@
 #include <vector>
 #include "tgaimage.h"
 #include <limits>
+#include <algorithm>
 
 namespace simple_graphics {
 
+	struct ZBuffer {
+		std::vector<float> buffer;
+		int width;
+		int height;
+		float& operator ()(int x, int y) {
+			return buffer[y * width + x];
+		}
+		void reset(int new_width, int new_height) {
+			width = new_width;
+			height = new_height;
+			buffer.resize(width * height);
+			for (float& value : buffer) {
+				value = std::numeric_limits<float>::lowest();
+			}
+		}
+	};
 
-
-	extern Matrix ModelView;
-	extern Matrix Viewport;
-	extern Matrix Projection;
+	extern mat<4,4> ModelView;
+	extern mat<4,4> Viewport;
+	extern mat<4,4> Projection;
+	extern ZBuffer DrawZBuffer;
+	extern ZBuffer ShadowZBuffer;
 
 	void viewport(int x, int y, int w, int h);
 	void projection(float coeff = 0.f); // coeff = -1/c
-	void lookat(Vec3f eye, Vec3f center, Vec3f up);
+	void lookat(vec<3>& eye, vec<3>& center, vec<3>& up);
 
 	struct Point {
 		Point(int x, int y) : x(x), y(y) {}
@@ -34,13 +52,15 @@ namespace simple_graphics {
 		UINT8 g;
 		UINT8 b;
 		UINT8 a;
+		inline SimpleColor operator *(double f) { return SimpleColor(std::clamp(r * f, 0.0,255.0), std::clamp(g * f, 0.0, 255.0), std::clamp(b * f, 0.0, 255.0), a); }
+		inline SimpleColor operator +(uint8_t f) { return SimpleColor(std::clamp(r + f, 0, 255), std::clamp(g + f, 0, 255), std::clamp(b + f, 0, 255), a); }
 	};
 
 	class IShader {
 	public:
 		virtual ~IShader() = default;
-		virtual Vec3f vertex(int iface, int nthvert) = 0;
-		virtual bool fragment(Vec3f bar, SimpleColor& color) = 0;
+		virtual vec<3> vertex(int iface, int nthvert) = 0;
+		virtual bool fragment(const vec<3>& bar, SimpleColor& color) = 0;
 	};
 
 	class SimpleGraphics {
@@ -52,10 +72,8 @@ namespace simple_graphics {
 			window_height_ = window_height;
 			gf_.reset(new Gdiplus::Graphics(hdc));
 			bmp_.reset(new Gdiplus::Bitmap(window_width, window_height, PixelFormat32bppARGB));
-			z_buffer_.resize(window_height * window_width);
-			for (int i = 0; i < z_buffer_.size(); ++i) {
-				z_buffer_[i] = std::numeric_limits<float>::lowest();
-			}
+			DrawZBuffer.reset(window_width, window_height);
+			ShadowZBuffer.reset(window_width * 2, window_height * 2);
 			FlushWindow();
 		}
 
@@ -72,11 +90,9 @@ namespace simple_graphics {
 			DrawPoint(x, y);
 		}
 
-		float DirectionalComponent(const Vec3f triangle[3], const Vec3f& direction);
+		float DirectionalComponent(const vec<3> triangle[3], const vec<3>& direction);
 
-		void DrawTriangleOutline(Vec2i a, Vec2i b, Vec2i c);
-
-		void DrawTriangle(const Vec3f triangle[3], IShader& shader);
+		void DrawTriangle(const vec<3> triangle[3], IShader& shader, ZBuffer& z_buffer);
 
 		void FlushWindow() {
 			Gdiplus::BitmapData data;
@@ -111,7 +127,7 @@ namespace simple_graphics {
 				Gdiplus::UnitPixel);
 		}
 
-		void DrawLine(Vec2i a, Vec2i b);
+		void DrawLine(const vec<2>& a, const vec<2>& b);
 
 	private:
 		int window_width_;
@@ -119,7 +135,6 @@ namespace simple_graphics {
 		Gdiplus::Color color_;
 		std::unique_ptr<Gdiplus::Graphics> gf_;
 		std::unique_ptr<Gdiplus::Bitmap> bmp_;
-		std::vector<float> z_buffer_;
 	};
 
 }

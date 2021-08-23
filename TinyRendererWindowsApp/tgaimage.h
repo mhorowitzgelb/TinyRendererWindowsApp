@@ -2,6 +2,7 @@
 #define __IMAGE_H__
 
 #include <fstream>
+#include "geometry.h";
 
 #pragma pack(push,1)
 struct TGA_Header {
@@ -92,6 +93,10 @@ public:
     int  get_bytespp() const;
     unsigned char* buffer();
     void clear();
+    vec3 get_vector_interpretation(int x, int y) {
+        TGAColor color = get(x, y);
+        return vec3(color[2], color[1], color[0]) / (255.0 /2.0) - vec3(1,1,1);
+    }
 };
 
 #endif //__IMAGE_H__

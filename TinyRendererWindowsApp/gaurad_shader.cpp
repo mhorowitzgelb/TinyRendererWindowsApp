@@ -1,4 +1,5 @@
 #include "gaurad_shader.h"
+/*
 namespace simple_graphics {
     Vec3f GauraudShader::vertex(int iface, int nthvert)
     {
@@ -22,4 +23,4 @@ namespace simple_graphics {
         color.a = 255;
         return false;
     }
-}
+}*/

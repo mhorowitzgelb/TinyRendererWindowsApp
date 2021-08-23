@@ -48,6 +48,9 @@
     <ClInclude Include="normal_map_shader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="darboux_shader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="TinyRendererWindowsApp.cpp">
@@ -69,6 +72,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="normal_map_shader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="darboux_shader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

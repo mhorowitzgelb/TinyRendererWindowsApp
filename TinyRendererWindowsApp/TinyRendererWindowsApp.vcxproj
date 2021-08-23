@@ -149,6 +149,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="darboux_shader.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="gaurad_shader.h" />
     <ClInclude Include="geometry.h" />
@@ -161,6 +162,7 @@
     <ClInclude Include="TinyRendererWindowsApp.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="darboux_shader.cpp" />
     <ClCompile Include="gaurad_shader.cpp" />
     <ClCompile Include="geometry.cpp" />
     <ClCompile Include="model.cpp" />

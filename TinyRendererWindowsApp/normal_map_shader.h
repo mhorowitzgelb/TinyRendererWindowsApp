@@ -3,29 +3,31 @@
 #include "model.h"
 #include "tgaimage.h"
 #include "geometry.h"
+
 namespace simple_graphics {
     class NormalMapShader :
         public IShader
     {
     public:
-        NormalMapShader(Model* model, TGAImage* texture, TGAImage* normal_map, TGAImage* spec_map, const Vec3f& light_direction) : 
-            model_(model), texture_(texture), normal_map_(normal_map), spec_map_(spec_map){
-            vertex_matrix_ = Viewport * Projection * ModelView;
-            normal_map_matrix_ = (Projection).transpose().inverse();
-            light_direction_ = Vec3f(Projection*ModelView* light_direction.AsHomogenous()).normalize();
+        NormalMapShader(SimpleGraphics* simple_graphics, const mat<4, 4>& shadow_projection_view_mat, const mat<4,4>& projection_view_mat, Model* model, const vec3& light_direction) :
+            simple_graphics_(simple_graphics),shadow_projection_view_mat_(shadow_projection_view_mat),model_(model), projection_view_mat_(projection_view_mat){
+            vertex_matrix_ = Viewport * projection_view_mat;
+            normal_map_matrix_ = (projection_view_mat).invert_transpose();
+            light_direction_ = from_homogenous(projection_view_mat_* embed<4>(light_direction)).normalize();
         }
-        virtual Vec3f vertex(int iface, int nthvert) override;
-        virtual bool fragment(Vec3f bar, SimpleColor& color) override;
+        virtual vec3 vertex(int iface, int nthvert) override;
+        virtual bool fragment(const vec3& bar, SimpleColor& color) override;
     protected:
-        TGAImage* normal_map_;
-        TGAImage* texture_;
-        TGAImage* spec_map_;
+        mat<4, 4> shadow_projection_view_mat_;
+        mat<4, 4> projection_view_mat_;
+        SimpleGraphics* simple_graphics_;
         Model* model_;
-        Vec3f varying_texture_[2];
-        Vec3f varying_normal_map_[2];
-        Matrix vertex_matrix_;
-        Matrix normal_map_matrix_;
-        Vec3f light_direction_;
+        mat<2,3> varying_uv_;
+        mat<3,3> varying_normal_;
+        mat<3, 3> triangle_;
+        mat<4,4> vertex_matrix_;
+        mat<4,4> normal_map_matrix_;
+        vec3 light_direction_;
     };
 }
 

@@ -7,33 +7,32 @@ namespace simple_graphics {
 
 		
 
-
-		template<typename t>
-		Vec3f barycentric(const Vec2<t>& p, const Vec3<t> triangle[3]) {
-			Vec2<t> a_b = triangle[1].AsVec2() - triangle[0].AsVec2();
-			Vec2<t> a_c = triangle[2].AsVec2() - triangle[0].AsVec2();
-			Vec2<t> p_a = triangle[0].AsVec2() - p;
-			Vec3<t> cross = Vec3<t>(a_b.x, a_c.x, p_a.x) ^ Vec3<t>(a_b.y, a_c.y, p_a.y);
-			if (cross.z == 0) {
-				return Vec3f(-1,1,1);
+		template<int n>
+		vec<3> barycentric(const vec<2>& p, const vec<n> triangle[3]) {
+			vec<2> a_b = proj<2>(triangle[1]) - proj<2>(triangle[0]);
+			vec<2> a_c = proj<2>(triangle[2]) - proj<2>(triangle[0]);
+			vec<2> p_a = proj<2>(triangle[0]) - p;
+			vec<3> cross_product = cross(vec<3>(a_b.x, a_c.x, p_a.x),  vec<3>(a_b.y, a_c.y, p_a.y));
+			if (cross_product.z == 0) {
+				return vec<3>(-1,1,1);
 			}
-			float u = cross.x / (float)cross.z;
-			float v = cross.y / (float)cross.z;
-			return Vec3f(1 - u - v, u, v);
+			float u = cross_product.x / (float)cross_product.z;
+			float v = cross_product.y / (float)cross_product.z;
+			return vec<3>(1 - u - v, u, v);
 		}
 
-		bool InTriangle(const Vec3f& bary) {
+		bool InTriangle(const vec<3>& bary) {
 			return bary[0] >= 0 && bary[1] >= 0 && bary[2] >= 0;
 		}
 
-		float GetZForPoint(const Vec3f& bary, const Vec3f triangle[3]) {
+		float GetZForPoint(const vec<3>& bary, const vec<3> triangle[3]) {
 			return bary.y * triangle[1].z + bary.z * triangle[2].z + bary.x  * triangle[0].z;
 		}
 
 		
 
-		SimpleColor GetColorForPoint(const Vec3f& bary, const Vec2f texture[3], const TGAImage& image) {
-			const Vec2f texture_coordinate = texture[0] * bary[0] + texture[1] * bary[1]
+		SimpleColor GetColorForPoint(const vec<3>& bary, const vec<2> texture[3], const TGAImage& image) {
+			const vec<2> texture_coordinate = texture[0] * bary[0] + texture[1] * bary[1]
 				+ texture[2] * bary[2];
 
 			int p_x = max(0, min(1, texture_coordinate.x)) * image.get_width();
@@ -58,19 +57,21 @@ namespace simple_graphics {
 		}
 
 
-		float GetBrightnessForPoint(const Vec3f& bary, const Vec3f normals[3], const Vec3f& light_direction) {
-			Vec3f normal = normals[0] * bary[0] + normals[1] * bary[1] + normals[2] * bary[2];
+		float GetBrightnessForPoint(const vec<3>& bary, const vec<3> normals[3], const vec<3>& light_direction) {
+			vec<3> normal = normals[0] * bary[0] + normals[1] * bary[1] + normals[2] * bary[2];
 			return min(1,max(0,normal.normalize() * light_direction * -1 ));
 		}
 
 	}
 
-	Matrix ModelView;
-	Matrix Viewport;
-	Matrix Projection;
+	mat<4,4> ModelView;
+	mat<4, 4> Viewport;
+	mat<4, 4> Projection;
+	ZBuffer DrawZBuffer;
+	ZBuffer ShadowZBuffer;
 
 	void viewport(int x, int y, int w, int h) {
-		Viewport = Matrix::identity(4);
+		Viewport = mat<4, 4>::identity();
 		Viewport[0][3] = x + w / 2.f;
 		Viewport[1][3] = y + h / 2.f;
 		Viewport[2][3] = 0;
@@ -81,15 +82,15 @@ namespace simple_graphics {
 	}
 
 	void projection(float coeff) {
-		Projection = Matrix::identity(4);
+		Projection = mat<4,4>::identity();
 		Projection[3][2] = coeff;
 	}
 	
-	void lookat(Vec3f eye, Vec3f center, Vec3f up) {
-		Vec3f z = (eye - center).normalize();
-		Vec3f x = (up ^ z).normalize();
-		Vec3f y = (z ^ x).normalize();
-		ModelView = Matrix::identity(4);
+	void lookat(vec<3>& eye, vec<3>& center, vec<3>& up) {
+		vec<3> z = (eye - center).normalize();
+		vec<3> x = cross(up, z).normalize();
+		vec<3> y = cross(z, x).normalize();
+		ModelView = mat<4,4>::identity();
 		for (int i = 0; i < 3; i++) {
 			ModelView[0][i] = x[i];
 			ModelView[1][i] = y[i];
@@ -99,50 +100,45 @@ namespace simple_graphics {
 	}
 
 
-	float SimpleGraphics::DirectionalComponent(const Vec3f triangle[3], const Vec3f& direction) {
-		Vec3f normal = (triangle[2] - triangle[0]) ^ (triangle[1] - triangle[0]);
+	float SimpleGraphics::DirectionalComponent(const vec<3> triangle[3], const vec<3>& direction) {
+		vec<3> normal = cross((triangle[2] - triangle[0]), (triangle[1] - triangle[0]));
 		normal.normalize();
 		return	direction * normal;
 	}
 
-
-	void SimpleGraphics::DrawTriangleOutline(Vec2i a, Vec2i b, Vec2i c)
+	void SimpleGraphics::DrawTriangle(const vec<3> triangle[3], IShader& shader, ZBuffer& z_buffer)
 	{
-		DrawLine(a, b);
-		DrawLine(b, c);
-		DrawLine(c, a);
-	}
-	
-	void SimpleGraphics::DrawTriangle(const Vec3f triangle[3], IShader& shader)
-	{
-		std::pair<int, int> bounds_x = Bounds(triangle[0].x, triangle[1].x, triangle[2].x, window_width_);
-		std::pair<int, int> bounds_y = Bounds(triangle[0].y, triangle[1].y, triangle[2].y, window_height_);
+		std::pair<int, int> bounds_x = Bounds(triangle[0].x, triangle[1].x, triangle[2].x, z_buffer.width);
+		std::pair<int, int> bounds_y = Bounds(triangle[0].y, triangle[1].y, triangle[2].y, z_buffer.height);
 		bounds_x.first = max(0, bounds_x.first);
 		bounds_x.second = min(window_width_ - 1, bounds_x.second);
 		bounds_y.first = max(0, bounds_y.first);
 		bounds_y.second = min(window_width_ - 1, bounds_y.second);
 
-		Vec2i point;
+		vec<2> point;
 		SimpleColor color(0,0,0,0);
 		for (point.y = bounds_y.first; point.y <= bounds_y.second; ++point.y) {
 			for (point.x = bounds_x.first; point.x <= bounds_x.second; ++point.x) {
-				Vec3f bary = barycentric(Vec2f(point.x, point.y), triangle);
-				
+				vec<3> bary = barycentric(vec<2>(point.x, point.y), triangle);
 				if (InTriangle(bary)) {
 					if (!shader.fragment(bary, color)) {
 						float z = GetZForPoint(bary, triangle);
-						if (z > z_buffer_[point.y * window_width_ + point.x]) {
-							SetColor(color);
-							z_buffer_[point.y * window_width_ + point.x] = z;
-							DrawPoint(point.x, point.y);
+						if (z > z_buffer(point.x, point.y)) {
+							z_buffer(point.x, point.y) = z;
+							if(&z_buffer != &ShadowZBuffer){
+								SetColor(color);
+								DrawPoint(point.x, point.y);
+							}
 						}
 					}
 				}
 			}
 		}
 	}
-	void SimpleGraphics::DrawLine( Vec2i a,  Vec2i b)
+	void SimpleGraphics::DrawLine( const vec<2>& orig_a,  const vec<2>& orig_b)
 	{
+		vec<2> a = orig_a;
+		vec<2> b = orig_b;
 		if (a == b) {
 			DrawPoint(a.x, a.y);
 			return;

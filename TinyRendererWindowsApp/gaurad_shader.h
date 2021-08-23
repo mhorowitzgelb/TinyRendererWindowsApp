@@ -1,6 +1,7 @@
 #pragma once
 #include "SimpleGraphics.h"
 #include "model.h"
+/*
 namespace simple_graphics {
     class GauraudShader :
         public IShader
@@ -21,5 +22,5 @@ namespace simple_graphics {
         Vec3f varying_intensity_;
         Vec3f varying_texture_[2];
     };
-}
+}*/
 
